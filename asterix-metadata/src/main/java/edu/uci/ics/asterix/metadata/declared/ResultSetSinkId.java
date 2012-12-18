@@ -12,40 +12,31 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package edu.uci.ics.asterix.aql.translator;
+package edu.uci.ics.asterix.metadata.declared;
 
-import edu.uci.ics.asterix.aql.base.Statement;
-import edu.uci.ics.asterix.aql.expression.Query;
 import edu.uci.ics.hyracks.api.dataset.ResultSetId;
-import edu.uci.ics.hyracks.api.job.JobId;
 
-public class QueryResult {
-
-    private final Query query;
+public class ResultSetSinkId {
 
     private final ResultSetId resultSetId;
 
-    private JobId jobId;
+    private final String resultNodeName;
 
-    public QueryResult(Query statement, ResultSetId resultSetId) {
-        this.query = statement;
+    public ResultSetSinkId(ResultSetId resultSetId, String resultNodeName) {
         this.resultSetId = resultSetId;
+        this.resultNodeName = resultNodeName;
     }
 
-    public void setJobId(JobId jobId) {
-        this.jobId = jobId;
+    @Override
+    public String toString() {
+        return "ResultSetId: " + resultSetId + "@" + resultNodeName;
     }
 
-    public JobId getJobId() {
-        return jobId;
-    }
-
-    public Statement getStatement() {
-        return query;
-    }
-
-    public ResultSetId getResultId() {
+    public ResultSetId getResultSetId() {
         return resultSetId;
     }
 
+    public String getResultNodeName() {
+        return resultNodeName;
+    }
 }

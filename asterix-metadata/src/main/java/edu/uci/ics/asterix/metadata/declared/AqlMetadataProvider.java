@@ -16,6 +16,7 @@
 package edu.uci.ics.asterix.metadata.declared;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -92,6 +93,7 @@ import edu.uci.ics.hyracks.api.dataflow.value.IBinaryComparatorFactory;
 import edu.uci.ics.hyracks.api.dataflow.value.ISerializerDeserializer;
 import edu.uci.ics.hyracks.api.dataflow.value.ITypeTraits;
 import edu.uci.ics.hyracks.api.dataflow.value.RecordDescriptor;
+import edu.uci.ics.hyracks.api.dataset.ResultSetId;
 import edu.uci.ics.hyracks.api.io.FileReference;
 import edu.uci.ics.hyracks.api.job.JobSpecification;
 import edu.uci.ics.hyracks.dataflow.std.file.ConstantFileSplitProvider;
@@ -99,6 +101,7 @@ import edu.uci.ics.hyracks.dataflow.std.file.FileScanOperatorDescriptor;
 import edu.uci.ics.hyracks.dataflow.std.file.FileSplit;
 import edu.uci.ics.hyracks.dataflow.std.file.IFileSplitProvider;
 import edu.uci.ics.hyracks.dataflow.std.file.ITupleParserFactory;
+import edu.uci.ics.hyracks.dataflow.std.result.ResultWriterOperatorDescriptor;
 import edu.uci.ics.hyracks.storage.am.btree.dataflow.BTreeDataflowHelperFactory;
 import edu.uci.ics.hyracks.storage.am.btree.dataflow.BTreeSearchOperatorDescriptor;
 import edu.uci.ics.hyracks.storage.am.btree.frames.BTreeNSMInteriorFrameFactory;
@@ -121,6 +124,7 @@ public class AqlMetadataProvider implements IMetadataProvider<AqlSourceId, Strin
     private Map<String, String> config;
     private IAWriterFactory writerFactory;
     private FileSplit outputFile;
+    private ResultSetId resultSetId;
     private long jobTxnId;
 
     private final Dataverse defaultDataverse;
@@ -148,9 +152,9 @@ public class AqlMetadataProvider implements IMetadataProvider<AqlSourceId, Strin
         this.defaultDataverse = defaultDataverse;
         this.stores = AsterixProperties.INSTANCE.getStores();
     }
-    
-    public void setJobTxnId(long txnId){
-    	this.jobTxnId = txnId;
+
+    public void setJobTxnId(long txnId) {
+        this.jobTxnId = txnId;
     }
 
     public Dataverse getDefaultDataverse() {
@@ -183,6 +187,14 @@ public class AqlMetadataProvider implements IMetadataProvider<AqlSourceId, Strin
 
     public void setOutputFile(FileSplit outputFile) {
         this.outputFile = outputFile;
+    }
+
+    public ResultSetId getResultSetId() {
+        return resultSetId;
+    }
+
+    public void setResultSetId(ResultSetId resultSetId) {
+        this.resultSetId = resultSetId;
     }
 
     @Override
@@ -512,6 +524,25 @@ public class AqlMetadataProvider implements IMetadataProvider<AqlSourceId, Strin
     }
 
     @Override
+    public Pair<IOperatorDescriptor, AlgebricksPartitionConstraint> getResultHandleRuntime(IDataSink sink,
+            RecordDescriptor recordDescriptor, boolean ordered, JobSpecification spec) throws AlgebricksException {
+        ResultSetDataSink rsds = (ResultSetDataSink) sink;
+        ResultSetSinkId rssId = (ResultSetSinkId) rsds.getId();
+        ResultSetId rsId = rssId.getResultSetId();
+        String nodeName = rssId.getResultNodeName();
+
+        ResultWriterOperatorDescriptor resultWriter = null;
+        try {
+            resultWriter = new ResultWriterOperatorDescriptor(spec, rsId, ordered, recordDescriptor);
+        } catch (IOException e) {
+            throw new AlgebricksException(e);
+        }
+
+        AlgebricksPartitionConstraint apc = new AlgebricksAbsolutePartitionConstraint(new String[] { nodeName });
+        return new Pair<IOperatorDescriptor, AlgebricksPartitionConstraint>(resultWriter, apc);
+    }
+
+    @Override
     public IDataSourceIndex<String, AqlSourceId> findDataSourceIndex(String indexId, AqlSourceId dataSourceId)
             throws AlgebricksException {
         AqlDataSource ads = findDataSource(dataSourceId);
@@ -820,10 +851,8 @@ public class AqlMetadataProvider implements IMetadataProvider<AqlSourceId, Strin
             TreeIndexInsertUpdateDeleteOperatorDescriptor btreeInsert = new TreeIndexInsertUpdateDeleteOperatorDescriptor(
                     spec, recordDesc, appContext.getStorageManagerInterface(), appContext.getIndexRegistryProvider(),
                     splitsAndConstraint.first, typeTraits, comparatorFactories, fieldPermutation, indexOp,
-                    new BTreeDataflowHelperFactory(), filterFactory, NoOpOperationCallbackProvider.INSTANCE,
-                    jobTxnId);
-            return new Pair<IOperatorDescriptor, AlgebricksPartitionConstraint>(btreeInsert,
-                    splitsAndConstraint.second);
+                    new BTreeDataflowHelperFactory(), filterFactory, NoOpOperationCallbackProvider.INSTANCE, jobTxnId);
+            return new Pair<IOperatorDescriptor, AlgebricksPartitionConstraint>(btreeInsert, splitsAndConstraint.second);
         } catch (MetadataException e) {
             throw new AlgebricksException(e);
         }
