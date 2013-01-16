@@ -26,7 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import edu.uci.ics.asterix.result.ReaderUtils;
+import edu.uci.ics.asterix.result.ResultUtils;
 import edu.uci.ics.asterix.result.ResultReader;
 import edu.uci.ics.asterix.runtime.formats.FormatUtils;
 import edu.uci.ics.hyracks.api.client.HyracksConnection;
@@ -42,14 +42,15 @@ public class QueryResultAPIServlet extends HttpServlet {
     @Override
     public void doGet(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String strHandle = request.getParameter("handle");
-        String strIP = "127.0.0.1";
-        String strPort = "1098";
-        int port = Integer.parseInt(strPort);
         PrintWriter out = response.getWriter();
         response.setContentType("text/html");
         ServletContext context = getServletContext();
         IHyracksClientConnection hcc;
         try {
+            HyracksProperties hp = new HyracksProperties();
+            String strIP = hp.getHyracksIPAddress();
+            int port = hp.getHyracksPort();
+
             synchronized (context) {
                 hcc = (IHyracksClientConnection) context.getAttribute(HYRACKS_CONNECTION_ATTR);
                 if (hcc == null) {
@@ -71,7 +72,7 @@ public class QueryResultAPIServlet extends HttpServlet {
             JSONObject jsonResponse = new JSONObject();
             JSONArray results = new JSONArray();
             while (resultReader.read(buffer) > 0) {
-                results.put(ReaderUtils.getJSONFromBuffer(buffer, resultReader.getFrameTupleAccessor(),
+                results.put(ResultUtils.getJSONFromBuffer(buffer, resultReader.getFrameTupleAccessor(),
                         resultReader.getRecordDescriptor()));
             }
             jsonResponse.put("results", results);

@@ -128,7 +128,8 @@ public class APIFramework {
 
     public enum DisplayFormat {
         TEXT,
-        HTML
+        HTML,
+        JSON
     }
 
     public static Pair<Query, Integer> reWriteQuery(List<FunctionDecl> declaredFunctions, AqlMetadataProvider metadataProvider,
