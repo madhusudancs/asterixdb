@@ -91,7 +91,7 @@ public class CCBootstrapImpl implements ICCBootstrap {
             LOGGER.info("Stopping Asterix cluster controller");
         }
         AsterixStateProxy.unregisterRemoteObject();
-        
+
         webServer.stop();
         apiServer.shutdown();
     }
