@@ -82,6 +82,7 @@ import edu.uci.ics.asterix.metadata.entities.NodeGroup;
 import edu.uci.ics.asterix.om.types.ATypeTag;
 import edu.uci.ics.asterix.om.types.IAType;
 import edu.uci.ics.asterix.om.types.TypeSignature;
+import edu.uci.ics.asterix.result.ResultReader;
 import edu.uci.ics.asterix.transaction.management.exception.ACIDException;
 import edu.uci.ics.asterix.transaction.management.service.transaction.TransactionIDFactory;
 import edu.uci.ics.asterix.translator.AbstractAqlTranslator;
@@ -136,7 +137,9 @@ public class AqlTranslator extends AbstractAqlTranslator {
         return functionDecls;
     }
 
-    public List<QueryResult> compileAndExecute(IHyracksClientConnection hcc) throws Exception {
+    public List<QueryResult> compileAndExecute(IHyracksClientConnection hcc, ResultReader resultReader)
+            throws Exception {
+        int resultSetIdCounter = 0;
         List<QueryResult> executionResult = new ArrayList<QueryResult>();
         FileSplit outputFile = null;
         IAWriterFactory writerFactory = PrinterBasedWriterFactory.INSTANCE;
@@ -240,6 +243,7 @@ public class AqlTranslator extends AbstractAqlTranslator {
                     }
 
                     case QUERY: {
+                        metadataProvider.setResultSetId(new ResultSetId(resultSetIdCounter++));
                         executionResult.add(handleQuery(metadataProvider, (Query) stmt, hcc, jobsToExecute));
                         break;
                     }
@@ -262,7 +266,12 @@ public class AqlTranslator extends AbstractAqlTranslator {
             }
             // Following jobs are run under a separate transaction, that is committed/aborted by the JobEventListener
             for (JobSpecification jobspec : jobsToExecute) {
-                runJob(hcc, jobspec);
+                JobId jobId = runJob(hcc, jobspec);
+                if (stmt.getKind() == Kind.QUERY) {
+                    resultReader.setFormat(metadataProvider.getFormat());
+                    resultReader.notifyJobStart(jobId, metadataProvider.getResultSetId());
+                }
+                hcc.waitForCompletion(jobId);
             }
         }
         return executionResult;
@@ -750,7 +759,8 @@ public class AqlTranslator extends AbstractAqlTranslator {
             GlobalConfig.ASTERIX_LOGGER.info(compiled.toJSON().toString(1));
             jobsToExecute.add(compiled);
         }
-        return new QueryResult(query, compiled.second.getLocalFile().getFile().getAbsolutePath());
+
+        return new QueryResult(query, metadataProvider.getResultSetId());
     }
 
     private void runCreateIndexJob(IHyracksClientConnection hcc, CreateIndexStatement stmtCreateIndex,
