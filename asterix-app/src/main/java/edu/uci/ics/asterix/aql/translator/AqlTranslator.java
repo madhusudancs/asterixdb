@@ -141,8 +141,7 @@ public class AqlTranslator extends AbstractAqlTranslator {
         return functionDecls;
     }
 
-    public List<QueryResult> compileAndExecute(IHyracksClientConnection hcc, ResultReader resultReader)
-            throws Exception {
+    public List<QueryResult> compileAndExecute(IHyracksClientConnection hcc, boolean asyncResults) throws Exception {
         int resultSetIdCounter = 0;
         List<QueryResult> executionResult = new ArrayList<QueryResult>();
         FileSplit outputFile = null;
