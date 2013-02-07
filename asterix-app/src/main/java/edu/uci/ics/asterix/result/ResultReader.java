@@ -35,12 +35,6 @@ public class ResultReader {
 
     private final IHyracksDataset hyracksDataset;
 
-    private final IDataFormat format;
-
-    private RecordDescriptor recordDescriptor;
-
-    private FrameTupleAccessor frameTupleAccessor;
-
     // Number of parallel result reader buffers
     private static final int NUM_READERS = 1;
 
@@ -48,20 +42,12 @@ public class ResultReader {
     public static final int FRAME_SIZE = 32768;
 
     public ResultReader(IHyracksClientConnection hcc, IDataFormat format) throws Exception {
-        this.format = format;
-
         datasetClientCtx = new DatasetClientContext(FRAME_SIZE);
         hyracksDataset = new HyracksDataset(hcc, datasetClientCtx, NUM_READERS);
     }
 
     public void open(JobId jobId, ResultSetId resultSetId) throws IOException, ClassNotFoundException {
         hyracksDataset.open(jobId, resultSetId);
-        byte[] serializedRecordDescriptor = hyracksDataset.getSerializedRecordDescriptor();
-
-        recordDescriptor = (RecordDescriptor) JavaSerializationUtils.deserialize(serializedRecordDescriptor, format
-                .getSerdeProvider().getClass().getClassLoader());
-
-        frameTupleAccessor = new FrameTupleAccessor(datasetClientCtx.getFrameSize(), recordDescriptor);
     }
 
     public Status getStatus() {
@@ -70,13 +56,5 @@ public class ResultReader {
 
     public int read(ByteBuffer buffer) throws HyracksDataException {
         return hyracksDataset.read(buffer);
-    }
-
-    public FrameTupleAccessor getFrameTupleAccessor() {
-        return frameTupleAccessor;
-    }
-
-    public RecordDescriptor getRecordDescriptor() {
-        return recordDescriptor;
     }
 }

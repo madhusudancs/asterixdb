@@ -283,10 +283,9 @@ public class AqlTranslator extends AbstractAqlTranslator {
                         ResultReader resultReader = new ResultReader(hcc, metadataProvider.getFormat());
                         resultReader.open(jobId, metadataProvider.getResultSetId());
                         buffer.clear();
-                        JSONArray results = new JSONArray();
+                        String results = new String();
                         while (resultReader.read(buffer) > 0) {
-                            results.put(ResultUtils.getJSONFromBuffer(buffer, resultReader.getFrameTupleAccessor(),
-                                    resultReader.getRecordDescriptor()));
+                            results.concat(buffer.toString());
                         }
                         response.put("results", results);
                     }
